@@ -26,6 +26,14 @@ bond_cutoffs.at["N", "Cl"] = 1.9
 bond_cutoffs.at["O", "O"] = 1.7
 bond_cutoffs.at["O", "Cl"] = 1.9
 bond_cutoffs.at["Cl", "Cl"] = 2.0
+
+bond_cutoffs.at["H", "K"] = 0.0
+bond_cutoffs.at["C", "K"] = 0.0
+bond_cutoffs.at["N", "K"] = 0.0
+bond_cutoffs.at["O", "K"] = 0.0
+bond_cutoffs.at["Cl", "K"] = 0.0
+
+
 for i in bond_cutoffs.index:
     for j in bond_cutoffs.columns:
         bond_cutoffs.at[j,i] = bond_cutoffs.at[i,j]
@@ -37,15 +45,19 @@ def readin(fname):
 
 atomic_colours = {"H": [0.75, 0.75, 0.75],
                   "C": Color("grey").get_rgb(),
-                  "N": Color("blue").get_rgb()}
-atomic_radii = {"H": 0.33, "C": 0.456, "N": 0.456, "Cl": 0.525}
+                  "N": Color("blue").get_rgb(),
+                  "K": Color("purple").get_rgb(),}
+atomic_radii = {"H": 0.33, "C": 0.456, "N": 0.456, "Cl": 0.525, "K": 1.0}
 
 class pvchem:
     def load_mol(self, filename):
-        self.mol = read(filename)
+        mol = read(filename)
+        self._load(mol)
+
+    def _load(self, mol):
+        self.mol = mol
         self.connections = find_connections(self.mol)
         self.mol.positions -= self.mol.positions.min(axis=0)
-        
     def make_bond(self, conn):
         # 2 cylinders per bond, each going to the half way point with their own colour
         a0 = self.mol[conn["a0"]]
@@ -63,7 +75,7 @@ class pvchem:
         cylinder += "}\n"
         return cylinder
         
-    def write(self, fname):
+    def write(self, fname, colour=None):
         with open(fname, 'w') as povout:
             povout.write(self.defaults)
             for i in range(len(self.mol)):
@@ -71,7 +83,11 @@ class pvchem:
                 atom = self.mol[i]
                 povout.write("sphere {\n")
                 povout.write("    <{:.4f}, {:.4f}, {:.4f}>, {:.4f}\n".format(*atom.position, atomic_radii[atom.symbol]))
-                povout.write("    pigment { rgbt <"+", ".join([str(x) for x in atomic_colours[self.mol[i].symbol]]) +", 0> }\n")#.format(atom.position[0]))
+                if colour is None:
+                    povout.write("    pigment { rgbt <"+", ".join([str(x) for x in atomic_colours[self.mol[i].symbol]]) +", 0> }\n")#.format(atom.position[0]))
+                else:
+                    povout.write("    pigment { rgbt <"+", ".join([str(x) for x in Color(colour).get_rgb()]) +", 0> }\n")#.format(atom.position[0]))
+                    
                 povout.write("}\n")
             
             for connection in self.connections:
