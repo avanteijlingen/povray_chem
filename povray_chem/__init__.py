@@ -33,6 +33,11 @@ bond_cutoffs.at["N", "K"] = 0.0
 bond_cutoffs.at["O", "K"] = 0.0
 bond_cutoffs.at["Cl", "K"] = 0.0
 
+# CG
+bond_cutoffs.at["B", "B"] = 4.75
+bond_cutoffs.at["B", "S"] = 0.5
+bond_cutoffs.at["S", "S"] = 0.5
+
 
 for i in bond_cutoffs.index:
     for j in bond_cutoffs.columns:
@@ -46,8 +51,11 @@ def readin(fname):
 atomic_colours = {"H": [0.75, 0.75, 0.75],
                   "C": Color("grey").get_rgb(),
                   "N": Color("blue").get_rgb(),
-                  "K": Color("purple").get_rgb(),}
-atomic_radii = {"H": 0.33, "C": 0.456, "N": 0.456, "Cl": 0.525, "K": 1.0}
+                  "K": Color("purple").get_rgb(),
+                  "B": Color("pink").get_rgb(),
+                  "S": Color("yellow").get_rgb(),
+                  }
+atomic_radii = {"H": 0.33, "C": 0.456, "N": 0.456, "Cl": 0.525, "K": 1.0, "B": 1.0, "S":1.0}
 
 class pvchem:
     def load_mol(self, filename):
@@ -78,6 +86,7 @@ class pvchem:
     def write(self, fname, colour=None):
         with open(fname, 'w') as povout:
             povout.write(self.defaults)
+            povout.write(f"declare {fname.split('.')[0]} = union "+"{")
             for i in range(len(self.mol)):
                 povout.write("\n\n")
                 atom = self.mol[i]
@@ -90,10 +99,12 @@ class pvchem:
                     
                 povout.write("}\n")
             
+            print(self.connections)
             for connection in self.connections:
                 if self.connections[connection]['Type'] == "Bond":
                     povout.write(self.make_bond(self.connections[connection]))
-
+            povout.write("} //end of declare union\n\n")
+            povout.write("//object {"+f" {fname.split('.')[0]} "+"}")
         
     def __init__(self):
         self.defaults = readin(os.path.join(os.path.dirname(__file__), "defaults.pov"))
@@ -103,8 +114,9 @@ def find_connections(mol):
     # Determine the things we are going to vary
     Connections = {}
     for i in range(len(mol)):
+        print( mol[i].symbol, bond_cutoffs.max().max())
         d = mol.get_distances(i, indices=np.arange(0, len(mol)))
-        for j in np.where((d > 0.01) & (d < 1.8))[0].tolist():
+        for j in np.where((d > 0.01) & (d < bond_cutoffs.max().max()))[0].tolist():
             cutoff = bond_cutoffs.at[mol[i].symbol, mol[j].symbol]
             if d[j] > cutoff:
                 continue
@@ -131,8 +143,6 @@ def find_connections(mol):
         Connections[key] = {"Type":"Dihedral", "a0": i, "a1": j, "a2": k, "a3": l,
                        "s0": mol[i].symbol, "s1": mol[j].symbol, "s2": mol[k].symbol, "s3": mol[l].symbol,
                        "val": dihedral}
-# =============================================================================
-#     with open(f"Connections.json", 'w') as jout:
-#         json.dump(Connections, jout, indent=4)
-# =============================================================================
+    with open(f"Connections.json", 'w') as jout:
+        json.dump(Connections, jout, indent=4)
     return Connections
