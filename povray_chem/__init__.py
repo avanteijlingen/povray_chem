@@ -35,8 +35,8 @@ bond_cutoffs.at["Cl", "K"] = 0.0
 
 # CG
 bond_cutoffs.at["B", "B"] = 4.75
-bond_cutoffs.at["B", "S"] = 0.5
-bond_cutoffs.at["S", "S"] = 0.5
+bond_cutoffs.at["B", "S"] = 3.5
+bond_cutoffs.at["S", "S"] = 0
 
 
 for i in bond_cutoffs.index:
@@ -84,9 +84,10 @@ class pvchem:
         return cylinder
         
     def write(self, fname, colour=None):
+        name = fname.split('.')[0].replace("-", "_")
         with open(fname, 'w') as povout:
             povout.write(self.defaults)
-            povout.write(f"declare {fname.split('.')[0]} = union "+"{")
+            povout.write(f"#declare {name} = union "+"{")
             for i in range(len(self.mol)):
                 povout.write("\n\n")
                 atom = self.mol[i]
@@ -104,7 +105,7 @@ class pvchem:
                 if self.connections[connection]['Type'] == "Bond":
                     povout.write(self.make_bond(self.connections[connection]))
             povout.write("} //end of declare union\n\n")
-            povout.write("//object {"+f" {fname.split('.')[0]} "+"}")
+            povout.write("//object {"+f" {name} "+"}")
         
     def __init__(self):
         self.defaults = readin(os.path.join(os.path.dirname(__file__), "defaults.pov"))
